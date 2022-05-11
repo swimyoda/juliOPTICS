@@ -8,7 +8,7 @@ using DataFrames
 @everywhere include("juliOPTICS.jl")
 clusters = pyimport("sklearn.cluster")
 
-pworkers = 3
+pworkers = 9
 if nworkers()<pworkers
     addprocs(pworkers-nworkers())
 else
@@ -19,10 +19,29 @@ end
 
 @everywhere using SharedArrays
 @everywhere using Distances
-@everywhere minpts = 50
+@everywhere minpts = 20
 @everywhere epsi = 0.1
 @everywhere xi = 0.1
 @everywhere dist = euclidean
+
+
+
+#
+# Reachability plot experiment
+#
+
+n = 3000
+data1 = [[[4, -1] + 0.1 * randn(2) for i in 1:n/3];
+         [[3, -2] + 1.6 * randn(2) for i in 1:n/3];
+         [[5, 6] + 2 * randn(2) for i in 1:n/3] ]
+data = mapreduce(permutedims, vcat, data1)
+
+order, reachability_j = OPTICS(data, epsi, minpts, euclidean, xi)
+reachability_j = reachability_j[order]
+t = clusters.OPTICS(min_samples=minpts, xi=xi, max_eps=epsi, metric="euclidean", predecessor_correction=false).fit(data)
+reachability_p = t.reachability_[t.ordering_.+1]
+plot(reachability_j, labels="juliOPTICS", ylab="Reachability Distance", title="Computed Reachability Plots")
+plot!(reachability_p, labels="sklearn.Cluster.OPTICS")
 
 
 #
@@ -41,14 +60,14 @@ for i in 3 .*10 .^(2:4)
     println("serial")
     @btime labels = ExtractLabels(ExtractClustering(OPTICS(data, epsi, minpts, euclidean, xi)));
     println("faSTICS")
-    @btime DistributedOPTICS(data, minpts, xi, epsi, pworkers);
+    @btime faSTICS(data, minpts, xi, epsi, pworkers);
 end
 
 
 #
 #   Plotting timing experiment
 #
-file = CSV.File("C:\\Users\\gallag00n\\Documents\\MIT Courses\\Spring 2022\\18.337\\project\\timetrials.csv")
+ file = CSV.File("C:\\Users\\gallag00n\\Documents\\MIT Courses\\Spring 2022\\18.337\\project\\timetrials.csv")
 time = DataFrame(file)
 time.jspeedup = time.python ./ time.serial
 time.pspeedup = time.python ./ time.parallel

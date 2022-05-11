@@ -69,7 +69,7 @@ end
 
      for worker in 1:pworkers
         nextCenter = idx[available][1] # arbitrarily choose the next "center point" of the partition
-        neighbors= knn(tree, data[nextCenter, :], batchsize) # find the batchsize nearest neighbors
+        neighbors, distances = knn(tree, data[nextCenter, :], batchsize) # find the batchsize nearest neighbors
         workerassignment[neighbors] .= worker # assign those neighbors to this worker
         available[neighbors] .= false
     end
